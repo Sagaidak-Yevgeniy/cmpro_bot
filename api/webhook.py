@@ -1,87 +1,124 @@
-"""
-Flask webhook endpoint for Telegram bot.
-Handles incoming webhook requests from Telegram.
-"""
-
+from http.server import BaseHTTPRequestHandler
 import json
-from typing import Dict, Any
+import os
 
-from flask import Flask, request, jsonify
-from telegram import Update
+BOT_TOKEN = os.environ.get('BOT_TOKEN')
 
-from app.config import settings
-from app.logging import configure_logging, get_logger
-from app.bot.app import get_application
-
-# Configure logging
-configure_logging(settings.environment)
-logger = get_logger(__name__)
-
-# Create Flask app
-app = Flask(__name__)
-
-
-@app.route("/api/webhook", methods=["POST"])
-def webhook() -> Dict[str, Any]:
-    """
-    Handle incoming webhook from Telegram.
+def send_message(chat_id, text, reply_markup=None):
+    """Отправить сообщение через Telegram Bot API."""
+    import requests
     
-    Returns:
-        JSON response
-    """
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    
+    data = {
+        "chat_id": chat_id,
+        "text": text,
+        "parse_mode": "HTML"
+    }
+    
+    if reply_markup:
+        data["reply_markup"] = json.dumps(reply_markup)
+    
     try:
-        # Verify webhook secret
-        secret_token = request.headers.get("X-Telegram-Bot-Api-Secret-Token")
-        if secret_token != settings.telegram_webhook_secret:
-            logger.warning("Invalid webhook secret token")
-            return jsonify({"error": "Unauthorized"}), 401
-        
-        # Parse update
-        update_data = request.get_json()
-        if not update_data:
-            logger.warning("Empty webhook payload")
-            return jsonify({"error": "Empty payload"}), 400
-        
-        # Create Update object
-        update = Update.de_json(update_data, None)
-        if not update:
-            logger.warning("Invalid update data")
-            return jsonify({"error": "Invalid update"}), 400
-        
-        # Process update
-        import asyncio
-        application = get_application()
-        asyncio.run(application.process_update(update))
-        
-        logger.info(
-            "Webhook processed successfully",
-            update_id=update.update_id,
-            user_id=update.effective_user.id if update.effective_user else None
-        )
-        
-        return jsonify({"ok": True})
-        
+        response = requests.post(url, json=data)
+        return response.json()
     except Exception as e:
-        logger.error("Webhook processing failed", error=str(e), exc_info=True)
-        return jsonify({"error": "Internal server error"}), 500
+        print(f"Error sending message: {e}")
+        return None
 
+def get_main_menu_keyboard():
+    """Получить клавиатуру главного меню."""
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "🎯 Направления", "callback_data": "directions"},
+                {"text": "📝 Записаться", "callback_data": "enroll"}
+            ],
+            [
+                {"text": "📍 Контакты", "callback_data": "contacts"},
+                {"text": "🎯 Миссия", "callback_data": "mission"}
+            ],
+            [
+                {"text": "🌐 Ссылки", "callback_data": "links"},
+                {"text": "📚 Помощь", "callback_data": "help"}
+            ]
+        ]
+    }
 
-@app.route("/api/webhook", methods=["GET"])
-def webhook_info() -> Dict[str, Any]:
-    """
-    Provide webhook information.
+def process_webhook(update):
+    """Обработать webhook от Telegram."""
+    if "message" in update:
+        message = update["message"]
+        chat_id = message["chat"]["id"]
+        text = message.get("text", "")
+        
+        if text == "/start":
+            response_text = """🚀 <b>Добро пожаловать в школу программирования CodeMastersPRO!</b>
+
+🎯 <b>Наша миссия:</b>
+Мы обучаем программированию с нуля и готовим специалистов для IT-индустрии.
+
+📚 <b>Направления обучения:</b>
+• 🐍 Python разработка
+• 🌐 JavaScript разработка  
+• 🔧 Go разработка
+• 📊 Анализ данных
+
+🏢 <b>О нас:</b>
+• Современные методики обучения
+• Опытные преподаватели
+• Практические проекты
+• Помощь в трудоустройстве
+• Возможность участвовать в соревнованиях и хакатонах
+• Прививаем интерес и любовь к IT с первых шагов обучения
+
+Выберите действие:"""
+            
+            send_message(chat_id, response_text, get_main_menu_keyboard())
+        
+        elif text == "/help":
+            response_text = """📚 <b>Доступные команды:</b>
+
+/start - Главное меню
+/directions - Направления обучения  
+/enroll - Записаться на курс
+/contacts - Контакты и адрес
+/mission - Наша миссия
+/links - Ссылки на ресурсы
+/admin - Панель администратора
+
+🎯 <b>Как записаться на курс:</b>
+1. Нажмите "📝 Записаться"
+2. Выберите направление
+3. Поделитесь контактом
+4. Ждите звонка менеджера"""
+            
+            send_message(chat_id, response_text, get_main_menu_keyboard())
+        
+        else:
+            send_message(chat_id, "❓ Неизвестная команда. Используйте /start для главного меню.", get_main_menu_keyboard())
+
+class handler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length)
+        
+        try:
+            update = json.loads(post_data.decode('utf-8'))
+            process_webhook(update)
+            
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(b'{"ok": true}')
+            
+        except Exception as e:
+            print(f"Error processing webhook: {e}")
+            self.send_response(500)
+            self.end_headers()
     
-    Returns:
-        Webhook status information
-    """
-    return jsonify({
-        "status": "active",
-        "bot_username": settings.public_bot_username,
-        "webhook_url": f"{settings.app_base_url}/api/webhook"
-    })
-
-
-# For Vercel deployment
-def handler(request):
-    """Vercel serverless function handler."""
-    return app(request.environ, lambda *args: None)
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        self.wfile.write(b'CodeMastersPRO Bot is running!')
