@@ -6,7 +6,7 @@ Populates the database with initial data for directions, groups, and lessons.
 import asyncio
 from datetime import datetime, timedelta
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.logging import configure_logging, get_logger
@@ -16,14 +16,14 @@ from app.models import (
     Group,
     Lesson,
 )
-from app.db import async_engine, AsyncSessionLocal
+from app.db import engine, SessionLocal
 
 # Configure logging
 configure_logging(settings.environment)
 logger = get_logger(__name__)
 
 
-async def create_directions(session: AsyncSession) -> None:
+def create_directions(session: Session) -> None:
     """Create initial directions."""
     directions_data = [
         {
@@ -50,11 +50,8 @@ async def create_directions(session: AsyncSession) -> None:
     
     for direction_data in directions_data:
         # Check if direction already exists
-        from sqlalchemy import select
-        existing = await session.execute(
-            select(Direction).where(Direction.code == direction_data["code"])
-        )
-        if existing.scalar_one_or_none():
+        existing = session.query(Direction).filter(Direction.code == direction_data["code"]).first()
+        if existing:
             logger.info(f"Direction {direction_data['code'].value} already exists, skipping")
             continue
         
@@ -62,16 +59,13 @@ async def create_directions(session: AsyncSession) -> None:
         session.add(direction)
         logger.info(f"Created direction: {direction_data['title']}")
     
-    await session.commit()
+    session.commit()
 
 
-async def create_groups(session: AsyncSession) -> None:
+def create_groups(session: Session) -> None:
     """Create initial groups for each direction."""
     # Get all directions
-    directions_result = await session.execute(
-        select(Direction).where(Direction.is_active == True)
-    )
-    directions = directions_result.scalars().all()
+    directions = session.query(Direction).filter(Direction.is_active == True).all()
     
     groups_data = {
         DirectionCode.PYTHON: [
@@ -96,13 +90,11 @@ async def create_groups(session: AsyncSession) -> None:
         if direction.code in groups_data:
             for group_title in groups_data[direction.code]:
                 # Check if group already exists
-                existing = await session.execute(
-                    select(Group).where(
-                        Group.direction_id == direction.id,
-                        Group.title == group_title
-                    )
-                )
-                if existing.scalar_one_or_none():
+                existing = session.query(Group).filter(
+                    Group.direction_id == direction.id,
+                    Group.title == group_title
+                ).first()
+                if existing:
                     logger.info(f"Group {group_title} already exists, skipping")
                     continue
                 
@@ -113,16 +105,13 @@ async def create_groups(session: AsyncSession) -> None:
                 session.add(group)
                 logger.info(f"Created group: {group_title} for {direction.title}")
     
-    await session.commit()
+    session.commit()
 
 
-async def create_lessons(session: AsyncSession) -> None:
+def create_lessons(session: Session) -> None:
     """Create sample lessons for the next 30 days."""
     # Get all groups
-    groups_result = await session.execute(
-        select(Group).where(Group.is_active == True)
-    )
-    groups = groups_result.scalars().all()
+    groups = session.query(Group).filter(Group.is_active == True).all()
     
     if not groups:
         logger.warning("No groups found, skipping lesson creation")
@@ -170,19 +159,22 @@ async def create_lessons(session: AsyncSession) -> None:
         
         current_date += timedelta(days=1)
     
-    await session.commit()
+    session.commit()
     logger.info(f"Created {lesson_count} lessons")
 
 
-async def seed_database() -> None:
+def seed_database() -> None:
     """Main seed function."""
     logger.info("Starting database seeding...")
     
     try:
-        async with AsyncSessionLocal() as session:
-            await create_directions(session)
-            await create_groups(session)
-            await create_lessons(session)
+        session = SessionLocal()
+        try:
+            create_directions(session)
+            create_groups(session)
+            create_lessons(session)
+        finally:
+            session.close()
         
         logger.info("Database seeding completed successfully")
         
@@ -191,10 +183,10 @@ async def seed_database() -> None:
         raise
 
 
-async def main() -> None:
+def main() -> None:
     """Main entry point for seeding."""
-    await seed_database()
+    seed_database()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

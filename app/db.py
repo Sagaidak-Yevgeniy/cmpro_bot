@@ -1,34 +1,24 @@
 """
 Database configuration and session management.
-Uses SQLAlchemy 2.x with async support for PostgreSQL.
+Uses SQLAlchemy 2.x with synchronous operations for Windows compatibility.
 """
 
-from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Generator
+from typing import Generator
 
 from sqlalchemy import create_engine, event
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.config import settings
 from app.logging import get_logger
+from app.models import Base
 
 logger = get_logger(__name__)
 
-# Convert sync database URL to async
-async_database_url = settings.database_url.replace("postgresql://", "postgresql+asyncpg://")
-
 # Create engines
 engine = create_engine(settings.database_url, echo=False)
-async_engine = create_async_engine(async_database_url, echo=False)
 
 # Create session factories
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-AsyncSessionLocal = async_sessionmaker(
-    async_engine, 
-    class_=AsyncSession, 
-    expire_on_commit=False
-)
 
 
 def get_db() -> Generator:
@@ -50,24 +40,15 @@ def get_db() -> Generator:
         db.close()
 
 
-@asynccontextmanager
-async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
+def get_sync_db():
     """
-    Async context manager to get database session.
-    Used for async operations (Telegram bot handlers).
+    Get synchronous database session.
+    Used for all operations (simplified for Windows compatibility).
     
-    Yields:
-        Async database session
+    Returns:
+        Database session
     """
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-        except Exception as e:
-            logger.error("Async database session error", error=str(e))
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
+    return SessionLocal()
 
 
 # Add connection event listeners for logging

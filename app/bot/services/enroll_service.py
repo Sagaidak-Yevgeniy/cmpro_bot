@@ -4,12 +4,12 @@ Enrollment service for handling student enrollment logic.
 
 from typing import Optional
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.logging import get_logger
 from app.models import DirectionCode, EnrollmentStatus, LanguageCode, Student
 from app.utils.i18n import get_translation
-from app.bot.services.repo import (
+from app.bot.services.repo_sync import (
     DirectionRepository,
     EnrollmentRepository,
     StudentRepository,
@@ -21,10 +21,10 @@ logger = get_logger(__name__)
 class EnrollmentService:
     """Service for handling enrollment operations."""
     
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: Session):
         self.session = session
     
-    async def get_or_create_student(
+    def get_or_create_student(
         self,
         telegram_id: int,
         full_name: Optional[str] = None,
@@ -43,10 +43,10 @@ class EnrollmentService:
         Returns:
             Student instance
         """
-        student = await StudentRepository.get_by_telegram_id(self.session, telegram_id)
+        student = StudentRepository.get_by_telegram_id(self.session, telegram_id)
         
         if not student:
-            student = await StudentRepository.create(
+            student = StudentRepository.create(
                 self.session,
                 telegram_id=telegram_id,
                 full_name=full_name,
@@ -56,7 +56,7 @@ class EnrollmentService:
         else:
             # Update existing student if new data provided
             if full_name or phone:
-                await StudentRepository.update_profile(
+                StudentRepository.update_profile(
                     self.session,
                     student,
                     full_name=full_name,
@@ -65,7 +65,7 @@ class EnrollmentService:
         
         return student
     
-    async def enroll_student(
+    def enroll_student(
         self,
         student: Student,
         direction_code: DirectionCode
@@ -81,13 +81,13 @@ class EnrollmentService:
             Tuple of (success, message)
         """
         # Get direction
-        direction = await DirectionRepository.get_by_code(self.session, direction_code)
+        direction = DirectionRepository.get_by_code(self.session, direction_code)
         if not direction:
             message = get_translation("errors.general", lang=student.lang.value)
             return False, message
         
         # Check if already enrolled
-        existing_enrollment = await EnrollmentRepository.get_by_student_and_direction(
+        existing_enrollment = EnrollmentRepository.get_by_student_and_direction(
             self.session,
             student.id,
             direction.id
@@ -102,7 +102,7 @@ class EnrollmentService:
                 return False, message
         
         # Create new enrollment
-        await EnrollmentRepository.create(
+        EnrollmentRepository.create(
             self.session,
             student_id=student.id,
             direction_id=direction.id,
@@ -112,16 +112,16 @@ class EnrollmentService:
         message = get_translation("enroll.direction_received", lang=student.lang.value)
         return True, message
     
-    async def get_available_directions(self) -> list:
+    def get_available_directions(self) -> list:
         """
         Get all available directions.
         
         Returns:
             List of Direction objects
         """
-        return await DirectionRepository.get_all_active(self.session)
+        return DirectionRepository.get_all_active(self.session)
     
-    async def get_direction_by_code(self, code: DirectionCode):
+    def get_direction_by_code(self, code: DirectionCode):
         """
         Get direction by code.
         
@@ -131,4 +131,4 @@ class EnrollmentService:
         Returns:
             Direction object or None
         """
-        return await DirectionRepository.get_by_code(self.session, code)
+        return DirectionRepository.get_by_code(self.session, code)

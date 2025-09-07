@@ -21,6 +21,7 @@ from app.bot.handlers import (
     lang,
     schedule,
     start,
+    simple_handlers,
 )
 from app.bot.middlewares import (
     i18n_middleware,
@@ -56,9 +57,9 @@ def create_application() -> Application:
     _application.add_handler(rate_limit_middleware, group=-1)
     _application.add_handler(i18n_middleware, group=-1)
     
-    # Add command handlers
-    _application.add_handler(CommandHandler("start", start.start_command))
-    _application.add_handler(CommandHandler("lang", lang.show_language_menu))
+    # Add command handlers (using simple handlers for Windows compatibility)
+    _application.add_handler(CommandHandler("start", simple_handlers.simple_start_command))
+    _application.add_handler(CommandHandler("lang", simple_handlers.simple_lang_command))
     _application.add_handler(CommandHandler("admin", admin.start_admin))
     
     # Add conversation handlers
@@ -88,7 +89,7 @@ def create_application() -> Application:
         pattern=r"^admin_menu"
     ))
     _application.add_handler(CallbackQueryHandler(
-        lang.change_language,
+        simple_handlers.simple_change_language,
         pattern=r"^lang_"
     ))
     _application.add_handler(CallbackQueryHandler(
@@ -96,22 +97,22 @@ def create_application() -> Application:
         pattern=r"^back_to_menu"
     ))
     
-    # Add message handlers for menu items
+    # Add message handlers for menu items (using simple handlers)
     _application.add_handler(MessageHandler(
         filters.Regex(r"^📝 Записаться на курс$|^📝 Курсқа жазылу$"),
-        enroll.start_enrollment
+        simple_handlers.simple_start_command
     ))
     _application.add_handler(MessageHandler(
         filters.Regex(r"^🎯 Направления$|^🎯 Бағыттар$"),
-        directions.show_directions
+        simple_handlers.simple_directions_command
     ))
     _application.add_handler(MessageHandler(
         filters.Regex(r"^📅 Расписание$|^📅 Кесте$"),
-        schedule.show_schedule
+        simple_handlers.simple_schedule_command
     ))
     _application.add_handler(MessageHandler(
         filters.Regex(r"^💬 Поддержка$|^💬 Қолдау$"),
-        start.support_command
+        simple_handlers.simple_support_command
     ))
     
     # Add error handler

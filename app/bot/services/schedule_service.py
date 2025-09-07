@@ -4,13 +4,13 @@ Schedule service for handling lesson and schedule operations.
 
 from typing import List
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.logging import get_logger
 from app.models import LanguageCode
 from app.utils.i18n import get_translation
 from app.utils.time import format_date, format_time
-from app.bot.services.repo import LessonRepository
+from app.bot.services.repo_sync import LessonRepository
 
 logger = get_logger(__name__)
 
@@ -18,10 +18,10 @@ logger = get_logger(__name__)
 class ScheduleService:
     """Service for handling schedule operations."""
     
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: Session):
         self.session = session
     
-    async def get_upcoming_lessons(self, limit: int = 5) -> List:
+    def get_upcoming_lessons(self, limit: int = 5) -> List:
         """
         Get upcoming lessons.
         
@@ -31,9 +31,9 @@ class ScheduleService:
         Returns:
             List of Lesson objects
         """
-        return await LessonRepository.get_upcoming_lessons(self.session, limit)
+        return LessonRepository.get_upcoming_lessons(self.session, limit)
     
-    async def format_lessons_for_display(self, lessons: List, lang: LanguageCode = LanguageCode.RUSSIAN) -> str:
+    def format_lessons_for_display(self, lessons: List, lang: LanguageCode = LanguageCode.RUSSIAN) -> str:
         """
         Format lessons for display in Telegram.
         

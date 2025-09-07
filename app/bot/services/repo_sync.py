@@ -1,14 +1,13 @@
 """
-Database repository layer.
+Database repository layer (synchronous version for Windows compatibility).
 Provides data access methods for all models.
 """
 
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import and_, desc, func, select
-from sqlalchemy.orm import Session
-from sqlalchemy.orm import selectinload
+from sqlalchemy import and_, desc, func
+from sqlalchemy.orm import Session, selectinload
 
 from app.logging import get_logger
 from app.models import (
@@ -33,14 +32,11 @@ class StudentRepository:
     @staticmethod
     def get_by_telegram_id(session: Session, telegram_id: int) -> Optional[Student]:
         """Get student by Telegram ID."""
-        result = await session.execute(
-            select(Student).where(Student.telegram_id == telegram_id)
-        )
-        return result.scalar_one_or_none()
+        return session.query(Student).filter(Student.telegram_id == telegram_id).first()
     
     @staticmethod
-    async def create(
-        session: AsyncSession,
+    def create(
+        session: Session,
         telegram_id: int,
         full_name: Optional[str] = None,
         phone: Optional[str] = None,
@@ -54,25 +50,25 @@ class StudentRepository:
             lang=lang
         )
         session.add(student)
-        await session.commit()
-        await session.refresh(student)
+        session.commit()
+        session.refresh(student)
         
         logger.info("Student created", student_id=student.id, telegram_id=telegram_id)
         return student
     
     @staticmethod
-    async def update_language(session: AsyncSession, student: Student, lang: LanguageCode) -> Student:
+    def update_language(session: Session, student: Student, lang: LanguageCode) -> Student:
         """Update student language preference."""
         student.lang = lang
-        await session.commit()
-        await session.refresh(student)
+        session.commit()
+        session.refresh(student)
         
         logger.info("Student language updated", student_id=student.id, lang=lang.value)
         return student
     
     @staticmethod
-    async def update_profile(
-        session: AsyncSession,
+    def update_profile(
+        session: Session,
         student: Student,
         full_name: Optional[str] = None,
         phone: Optional[str] = None
@@ -83,8 +79,8 @@ class StudentRepository:
         if phone is not None:
             student.phone = phone
         
-        await session.commit()
-        await session.refresh(student)
+        session.commit()
+        session.refresh(student)
         
         logger.info("Student profile updated", student_id=student.id)
         return student
@@ -94,38 +90,29 @@ class DirectionRepository:
     """Repository for Direction model operations."""
     
     @staticmethod
-    async def get_all_active(session: AsyncSession) -> List[Direction]:
+    def get_all_active(session: Session) -> List[Direction]:
         """Get all active directions."""
-        result = await session.execute(
-            select(Direction).where(Direction.is_active == True).order_by(Direction.id)
-        )
-        return list(result.scalars().all())
+        return session.query(Direction).filter(Direction.is_active == True).order_by(Direction.id).all()
     
     @staticmethod
-    async def get_by_code(session: AsyncSession, code: DirectionCode) -> Optional[Direction]:
+    def get_by_code(session: Session, code: DirectionCode) -> Optional[Direction]:
         """Get direction by code."""
-        result = await session.execute(
-            select(Direction).where(
-                and_(Direction.code == code, Direction.is_active == True)
-            )
-        )
-        return result.scalar_one_or_none()
+        return session.query(Direction).filter(
+            and_(Direction.code == code, Direction.is_active == True)
+        ).first()
     
     @staticmethod
-    async def get_by_id(session: AsyncSession, direction_id: int) -> Optional[Direction]:
+    def get_by_id(session: Session, direction_id: int) -> Optional[Direction]:
         """Get direction by ID."""
-        result = await session.execute(
-            select(Direction).where(Direction.id == direction_id)
-        )
-        return result.scalar_one_or_none()
+        return session.query(Direction).filter(Direction.id == direction_id).first()
 
 
 class EnrollmentRepository:
     """Repository for Enrollment model operations."""
     
     @staticmethod
-    async def create(
-        session: AsyncSession,
+    def create(
+        session: Session,
         student_id: int,
         direction_id: int,
         status: EnrollmentStatus = EnrollmentStatus.PENDING
@@ -137,131 +124,114 @@ class EnrollmentRepository:
             status=status
         )
         session.add(enrollment)
-        await session.commit()
-        await session.refresh(enrollment)
+        session.commit()
+        session.refresh(enrollment)
         
         logger.info("Enrollment created", enrollment_id=enrollment.id, student_id=student_id)
         return enrollment
     
     @staticmethod
-    async def get_pending_enrollments(
-        session: AsyncSession,
+    def get_pending_enrollments(
+        session: Session,
         limit: int = 10,
         offset: int = 0
     ) -> List[Enrollment]:
         """Get pending enrollments with pagination."""
-        result = await session.execute(
-            select(Enrollment)
-            .options(
-                selectinload(Enrollment.student),
-                selectinload(Enrollment.direction)
-            )
-            .where(Enrollment.status == EnrollmentStatus.PENDING)
-            .order_by(desc(Enrollment.created_at))
-            .limit(limit)
-            .offset(offset)
-        )
-        return list(result.scalars().all())
+        return session.query(Enrollment)\
+            .options(selectinload(Enrollment.student), selectinload(Enrollment.direction))\
+            .filter(Enrollment.status == EnrollmentStatus.PENDING)\
+            .order_by(desc(Enrollment.created_at))\
+            .limit(limit)\
+            .offset(offset)\
+            .all()
     
     @staticmethod
-    async def get_by_student_and_direction(
-        session: AsyncSession,
+    def get_by_student_and_direction(
+        session: Session,
         student_id: int,
         direction_id: int
     ) -> Optional[Enrollment]:
         """Get enrollment by student and direction."""
-        result = await session.execute(
-            select(Enrollment).where(
-                and_(
-                    Enrollment.student_id == student_id,
-                    Enrollment.direction_id == direction_id
-                )
+        return session.query(Enrollment).filter(
+            and_(
+                Enrollment.student_id == student_id,
+                Enrollment.direction_id == direction_id
             )
-        )
-        return result.scalar_one_or_none()
+        ).first()
     
     @staticmethod
-    async def update_status(
-        session: AsyncSession,
+    def update_status(
+        session: Session,
         enrollment: Enrollment,
         status: EnrollmentStatus
     ) -> Enrollment:
         """Update enrollment status."""
         enrollment.status = status
-        await session.commit()
-        await session.refresh(enrollment)
+        session.commit()
+        session.refresh(enrollment)
         
         logger.info("Enrollment status updated", enrollment_id=enrollment.id, status=status.value)
         return enrollment
     
     @staticmethod
-    async def count_pending(session: AsyncSession) -> int:
+    def count_pending(session: Session) -> int:
         """Count pending enrollments."""
-        result = await session.execute(
-            select(func.count(Enrollment.id)).where(
-                Enrollment.status == EnrollmentStatus.PENDING
-            )
-        )
-        return result.scalar() or 0
+        return session.query(Enrollment).filter(
+            Enrollment.status == EnrollmentStatus.PENDING
+        ).count()
 
 
 class GroupRepository:
     """Repository for Group model operations."""
     
     @staticmethod
-    async def get_by_direction(session: AsyncSession, direction_id: int) -> List[Group]:
+    def get_by_direction(session: Session, direction_id: int) -> List[Group]:
         """Get groups by direction."""
-        result = await session.execute(
-            select(Group)
-            .where(and_(Group.direction_id == direction_id, Group.is_active == True))
-            .order_by(Group.id)
-        )
-        return list(result.scalars().all())
+        return session.query(Group)\
+            .filter(and_(Group.direction_id == direction_id, Group.is_active == True))\
+            .order_by(Group.id)\
+            .all()
 
 
 class LessonRepository:
     """Repository for Lesson model operations."""
     
     @staticmethod
-    async def get_upcoming_lessons(
-        session: AsyncSession,
+    def get_upcoming_lessons(
+        session: Session,
         limit: int = 5
     ) -> List[Lesson]:
         """Get upcoming lessons."""
         now = datetime.utcnow()
-        result = await session.execute(
-            select(Lesson)
-            .options(selectinload(Lesson.group).selectinload(Group.direction))
-            .where(Lesson.starts_at > now)
-            .order_by(Lesson.starts_at)
-            .limit(limit)
-        )
-        return list(result.scalars().all())
+        return session.query(Lesson)\
+            .options(selectinload(Lesson.group).selectinload(Group.direction))\
+            .filter(Lesson.starts_at > now)\
+            .order_by(Lesson.starts_at)\
+            .limit(limit)\
+            .all()
 
 
 class PaymentReminderRepository:
     """Repository for PaymentReminder model operations."""
     
     @staticmethod
-    async def get_pending_reminders(session: AsyncSession) -> List[PaymentReminder]:
+    def get_pending_reminders(session: Session) -> List[PaymentReminder]:
         """Get pending payment reminders that are due."""
         now = datetime.utcnow()
-        result = await session.execute(
-            select(PaymentReminder)
-            .options(selectinload(PaymentReminder.student))
-            .where(
+        return session.query(PaymentReminder)\
+            .options(selectinload(PaymentReminder.student))\
+            .filter(
                 and_(
                     PaymentReminder.status == PaymentReminderStatus.PENDING,
                     PaymentReminder.due_at <= now
                 )
-            )
-            .order_by(PaymentReminder.due_at)
-        )
-        return list(result.scalars().all())
+            )\
+            .order_by(PaymentReminder.due_at)\
+            .all()
     
     @staticmethod
-    async def create(
-        session: AsyncSession,
+    def create(
+        session: Session,
         student_id: int,
         due_at: datetime,
         status: PaymentReminderStatus = PaymentReminderStatus.PENDING
@@ -273,22 +243,22 @@ class PaymentReminderRepository:
             status=status
         )
         session.add(reminder)
-        await session.commit()
-        await session.refresh(reminder)
+        session.commit()
+        session.refresh(reminder)
         
         logger.info("Payment reminder created", reminder_id=reminder.id, student_id=student_id)
         return reminder
     
     @staticmethod
-    async def update_status(
-        session: AsyncSession,
+    def update_status(
+        session: Session,
         reminder: PaymentReminder,
         status: PaymentReminderStatus
     ) -> PaymentReminder:
         """Update payment reminder status."""
         reminder.status = status
-        await session.commit()
-        await session.refresh(reminder)
+        session.commit()
+        session.refresh(reminder)
         
         logger.info("Payment reminder status updated", reminder_id=reminder.id, status=status.value)
         return reminder

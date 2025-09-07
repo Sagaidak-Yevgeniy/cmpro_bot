@@ -35,15 +35,18 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     
     try:
         # Get or create student
-        async with get_async_db() as session:
+        from app.db import get_sync_db
+        session = get_sync_db()
+        try:
             enroll_service = EnrollmentService(session)
-            student = await enroll_service.get_or_create_student(
+            student = enroll_service.get_or_create_student(
                 telegram_id=user_id,
                 lang=LanguageCode(lang)
             )
-            
+        finally:
             # Update context with student info
             context.user_data["student_id"] = student.id
+            session.close()
         
         # Send welcome message
         welcome_text = get_translation("welcome.title", lang=lang)
