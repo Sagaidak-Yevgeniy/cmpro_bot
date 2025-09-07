@@ -1,0 +1,8 @@
+TELEGRAM_BOT_TOKEN=7172072404:AAG4Kw6GfyXJnm_jG0Fvo8j61jGb6JNgJqs
+TELEGRAM_WEBHOOK_SECRET=cmpro_webhook_secret_2024
+DATABASE_URL=sqlite:///./cmpro_bot.db
+APP_BASE_URL=https://cmpro-bot.vercel.app
+PUBLIC_BOT_USERNAME=@cmpro_bot
+ADMIN_ACCESS_TOKEN=cmpro_admin_2024
+DEFAULT_LANG=ru
+TZ=Asia/Almaty
