@@ -58,9 +58,9 @@ vercel
 
 ### 5. Настройка переменных окружения
 ```bash
-# Обязательные переменные
+# Обязательные переменные (введите значения при запросе)
 vercel env add TELEGRAM_BOT_TOKEN
-vercel env add TELEGRAM_WEBHOOK_SECRET
+vercel env add TELEGRAM_WEBHOOK_SECRET  
 vercel env add DATABASE_URL
 
 # Дополнительные переменные
@@ -69,6 +69,11 @@ vercel env add PUBLIC_BOT_USERNAME
 vercel env add ADMIN_ACCESS_TOKEN
 vercel env add DEFAULT_LANG
 vercel env add TZ
+
+# Или добавьте все сразу через файл .env
+vercel env pull .env.local
+# Отредактируйте .env.local и затем:
+vercel env push .env.local
 ```
 
 ### 6. Повторное развертывание
@@ -136,7 +141,15 @@ curl "https://api.telegram.org/bot$TOKEN/getWebhookInfo"
    vercel
    ```
 
-2. **Или создайте минимальную конфигурацию:**
+2. **Или используйте простую конфигурацию:**
+   ```bash
+   # Замените конфигурацию на минимальную
+   mv vercel.json vercel-backup.json
+   mv vercel-simple.json vercel.json
+   vercel
+   ```
+
+3. **Или создайте минимальную конфигурацию вручную:**
    ```bash
    # Удалите vercel.json и создайте новый
    rm vercel.json
