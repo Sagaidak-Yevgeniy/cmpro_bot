@@ -1,0 +1,11 @@
+flask==3.0.3
+python-telegram-bot[http2]==21.6
+SQLAlchemy==2.0.36
+psycopg[binary]==3.2.3
+asyncpg==0.29.0
+alembic==1.13.2
+pydantic-settings==2.4.0
+pydantic==2.9.2
+structlog==24.4.0
+python-dateutil==2.9.0.post0
+pytz==2024.1

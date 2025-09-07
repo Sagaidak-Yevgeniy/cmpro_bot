@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "functions": {
+    "api/webhook.py": { "runtime": "python3.11" },
+    "api/health.py": { "runtime": "python3.11" },
+    "api/cron.py": { "runtime": "python3.11" }
+  },
+  "routes": [
+    { "src": "/api/webhook", "dest": "/api/webhook.py" },
+    { "src": "/api/health", "dest": "/api/health.py" },
+    { "src": "/api/cron", "dest": "/api/cron.py" }
+  ],
+  "crons": [
+    { "path": "/api/cron", "schedule": "0 6 * * *" }
+  ]
+}
