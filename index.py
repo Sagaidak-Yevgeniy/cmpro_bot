@@ -5,122 +5,66 @@ import time
 
 # Конфигурация
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
-API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 # Админ настройки
 ADMIN_LOGIN = "Saga"
 ADMIN_PASSWORD = "Saga190989$"
-ADMIN_CHAT_ID = None  # Будет установлен при первом входе
 
 # Хранилище данных (в реальном проекте используйте базу данных)
-user_sessions = {}  # Хранит сессии пользователей
-enrollments = []    # Хранит записи на курсы
-students = {}       # Хранит данные студентов
-groups = {}         # Хранит группы студентов
-schedules = {}      # Хранит расписание
-payments = {}       # Хранит платежи
+user_sessions = {}
+enrollments = []
+students = {}
+groups = {}
+schedules = {}
+payments = {}
 
-# Современные ответы с кнопками
-RESPONSES = {
-    "/start": """🚀 <b>Добро пожаловать в школу программирования CodeMastersPRO!</b>
+# Файл для сохранения данных
+DATA_FILE = "bot_data.json"
 
-🎯 <b>Наша миссия:</b>
-Обучать IT‑специалистов с нуля, развивать навыки программирования и прививать любовь к технологиям.
+def load_data():
+    """Загрузить данные из файла."""
+    global user_sessions, enrollments, students, groups, schedules, payments
+    try:
+        if os.path.exists(DATA_FILE):
+            with open(DATA_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                user_sessions = data.get('user_sessions', {})
+                enrollments = data.get('enrollments', [])
+                students = data.get('students', {})
+                groups = data.get('groups', {})
+                schedules = data.get('schedules', {})
+                payments = data.get('payments', {})
+                print(f"Data loaded: {len(students)} students, {len(enrollments)} enrollments")
+    except Exception as e:
+        print(f"Error loading data: {e}")
 
-📍 <b>Где нас найти:</b>
-🏢 Павлодар, Казахстан
-Бекмаханова 115/2 (угол ул. Естая и проспекта Назарбаева)
+def save_data():
+    """Сохранить данные в файл."""
+    try:
+        data = {
+            'user_sessions': user_sessions,
+            'enrollments': enrollments,
+            'students': students,
+            'groups': groups,
+            'schedules': schedules,
+            'payments': payments
+        }
+        with open(DATA_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        print("Data saved successfully")
+    except Exception as e:
+        print(f"Error saving data: {e}")
 
-💻 <b>Формат обучения:</b>
-✅ Офлайн-занятия в уютных и современно оборудованных аудиториях
-✅ Практика на реальных проектах под руководством наставников
-✅ Пошаговое освоение основ программирования с возможностью углубленного развития
-
-🌐 <b>Наши ресурсы:</b>
-🌟 Сайт: codemasterspro.dev
-📸 Instagram: @code_masterspro
-
-🔥 <b>Почему CodeMastersPRO:</b>
-• Интерактивные уроки и живые проекты
-• Поддержка и постоянное общение с наставниками
-• Возможность участвовать в соревнованиях и хакатонах
-• Прививаем интерес и любовь к IT с первых шагов обучения
-
-Выберите действие:""",
-    
-    "/help": """📚 <b>Доступные команды:</b>
-
-/start - Главное меню
-/directions - Направления обучения  
-/enroll - Записаться на курс
-/contacts - Контакты и адрес
-/mission - Наша миссия
-/links - Ссылки на ресурсы
-/admin - Панель администратора
-
-🎯 <b>Как записаться на курс:</b>
-1. Нажмите "📝 Записаться"
-2. Выберите направление
-3. Поделитесь контактом
-4. Ждите звонка менеджера""",
-    
-    "/contacts": """📍 <b>Контакты CodeMastersPRO:</b>
-🏢 <b>Адрес:</b>
-Павлодар, Казахстан
-Бекмаханова 115/2
-(угол ул. Естая и проспекта Назарбаева)
-📞 <b>Телефон:</b> +7 (777) 332-36-76
-📧 <b>Email:</b> info@codemasterspro.dev
-🕒 <b>Время работы:</b>
-Пн-Пт: 9:00 - 21:00
-Сб: 10:00 - 18:00
-Вс: Выходной
-🌐 <b>Онлайн:</b>
-🔗 <b>Сайт:</b> https://www.codemasterspro.dev/
-📸 <b>Instagram:</b> https://www.instagram.com/code_masterspro""",
-    
-    "/mission": """🎯 <b>Наша миссия CodeMastersPRO</b>
-
-Мы обучаем IT‑специалистов с нуля, развиваем навыки программирования и прививаем любовь к технологиям.
-
-🎓 <b>Наши цели:</b>
-• Дать качественное образование в сфере IT
-• Подготовить конкурентоспособных специалистов
-• Развить практические навыки программирования
-• Создать комьюнити единомышленников
-
-💡 <b>Наш подход:</b>
-• Индивидуальный подход к каждому студенту
-• Практико-ориентированное обучение
-• Современные технологии и методики
-• Поддержка на всех этапах обучения
-
-🚀 <b>Результат:</b>
-Выпускники CodeMastersPRO успешно трудоустраиваются в ведущие IT-компании и создают собственные проекты.""",
-    
-    "/links": """🌐 <b>Полезные ссылки CodeMastersPRO</b>
-
-🔗 <b>Основные ресурсы:</b>
-• <b>Сайт:</b> https://www.codemasterspro.dev/
-• <b>Instagram:</b> https://www.instagram.com/code_masterspro
-
-📚 <b>Образовательные материалы:</b>
-• <b>GitHub:</b> https://github.com/codemasterspro
-• <b>YouTube:</b> https://youtube.com/@codemasterspro
-
-💼 <b>Карьера:</b>
-• <b>Вакансии:</b> https://www.codemasterspro.dev/careers
-• <b>Портфолио выпускников:</b> https://www.codemasterspro.dev/portfolio
-
-📞 <b>Связь с нами:</b>
-• <b>Telegram:</b> @CodeMastersPRO_bot
-• <b>Email:</b> info@codemasterspro.dev
-• <b>Телефон:</b> +7 (777) 332-36-76"""
-}
+# Загружаем данные при запуске
+load_data()
 
 def send_message(chat_id, text, reply_markup=None):
     """Отправить сообщение через Telegram Bot API."""
     import requests
+    
+    if not BOT_TOKEN:
+        print("ERROR: BOT_TOKEN not set")
+        return None
     
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     
@@ -135,7 +79,9 @@ def send_message(chat_id, text, reply_markup=None):
     
     try:
         response = requests.post(url, json=data)
-        return response.json()
+        result = response.json()
+        print(f"Send message result: {result}")
+        return result
     except Exception as e:
         print(f"Error sending message: {e}")
         return None
@@ -266,76 +212,47 @@ def get_school_management_keyboard():
         ]
     }
 
-def get_pending_enrollments_keyboard(enrollment_id=None):
-    """Получить клавиатуру для подтверждения записей."""
-    if enrollment_id is not None:
-        return {
-            "inline_keyboard": [
-                [
-                    {"text": "✅ Подтвердить", "callback_data": f"approve_enrollment_{enrollment_id}"},
-                    {"text": "❌ Отклонить", "callback_data": f"reject_enrollment_{enrollment_id}"}
-                ],
-                [
-                    {"text": "👥 Назначить в группу", "callback_data": f"assign_to_group_{enrollment_id}"},
-                    {"text": "📞 Связаться", "callback_data": f"contact_student_{enrollment_id}"}
-                ],
-                [
-                    {"text": "🔙 К записям", "callback_data": "admin_enrollments"}
-                ]
-            ]
-        }
-    else:
-        return {
-            "inline_keyboard": [
-                [
-                    {"text": "✅ Подтвердить", "callback_data": "approve_enrollment"},
-                    {"text": "❌ Отклонить", "callback_data": "reject_enrollment"}
-                ],
-                [
-                    {"text": "👥 Назначить в группу", "callback_data": "assign_to_group"},
-                    {"text": "📞 Связаться", "callback_data": "contact_student"}
-                ],
-                [
-                    {"text": "🔙 К записям", "callback_data": "admin_enrollments"}
-                ]
-            ]
-        }
-
 def is_admin(user_id):
     """Проверить, является ли пользователь админом."""
     return user_sessions.get(user_id, {}).get("is_admin", False)
 
 def notify_admin(enrollment_data):
     """Уведомить админа о новой записи."""
-    global ADMIN_CHAT_ID
+    # Находим админа
+    admin_id = None
+    for uid, session in user_sessions.items():
+        if session.get("is_admin"):
+            admin_id = uid
+            break
     
-    if ADMIN_CHAT_ID:
-        course_names = {
-            "python": "🐍 Python разработка",
-            "js": "🌐 JavaScript разработка", 
-            "go": "🔧 Go разработка",
-            "data": "📊 Анализ данных"
+    if admin_id:
+        message = f"""📝 <b>Новая запись на курс!</b>
+
+👤 <b>Имя:</b> {enrollment_data['name']}
+📞 <b>Телефон:</b> {enrollment_data['phone']}
+🎯 <b>Курс:</b> {enrollment_data['course']}
+👤 <b>Username:</b> @{enrollment_data['username']}
+📅 <b>Дата:</b> {enrollment_data['timestamp']}
+
+Подтвердите или отклоните запись:"""
+        
+        # Создаем клавиатуру для подтверждения/отклонения
+        keyboard = {
+            "inline_keyboard": [
+                [
+                    {"text": "✅ Подтвердить", "callback_data": f"approve_{enrollment_data['user_id']}"},
+                    {"text": "❌ Отклонить", "callback_data": f"reject_{enrollment_data['user_id']}"}
+                ],
+                [
+                    {"text": "🔧 Админ панель", "callback_data": "admin_panel"}
+                ]
+            ]
         }
-        course_name = course_names.get(enrollment_data.get("course", ""), "курс")
         
-        message = f"""🔔 <b>НОВАЯ ЗАПИСЬ НА КУРС!</b>
-
-👤 <b>Студент:</b> {enrollment_data.get('name', '')}
-📞 <b>Телефон:</b> {enrollment_data.get('phone', '')}
-🎯 <b>Курс:</b> {course_name}
-🕒 <b>Время записи:</b> {enrollment_data.get('timestamp', '')}
-👤 <b>Telegram:</b> @{enrollment_data.get('username', 'Unknown')}
-
-📋 <b>Всего записей:</b> {len(enrollments)}
-
-⚠️ <b>Требуется подтверждение записи!</b>"""
-        
-        # Сохраняем ID записи для обработки
-        enrollment_id = len(enrollments) - 1
-        user_sessions[ADMIN_CHAT_ID] = user_sessions.get(ADMIN_CHAT_ID, {})
-        user_sessions[ADMIN_CHAT_ID]["pending_enrollment"] = enrollment_id
-        
-        send_message(ADMIN_CHAT_ID, message, get_pending_enrollments_keyboard(enrollment_id))
+        send_message(admin_id, message, keyboard)
+        print(f"Admin notification sent to {admin_id}")
+    else:
+        print("No admin found to notify")
 
 def process_message(message):
     """Обработать сообщение."""
@@ -345,6 +262,8 @@ def process_message(message):
     user_id = user.get("id")
     username = user.get("username", "Unknown")
     contact = message.get("contact")
+    
+    print(f"Processing message: {text} from user {user_id}")
     
     # Обработка контакта
     if contact:
@@ -379,9 +298,6 @@ def process_message(message):
                 "enrollment_date": time.strftime("%d.%m.%Y %H:%M")
             }
             
-            # Уведомляем админа
-            notify_admin(enrollment_data)
-            
             response_text = f"""✅ <b>Заявка на запись отправлена!</b>
 
 👤 <b>Имя:</b> {full_name}
@@ -394,6 +310,12 @@ def process_message(message):
 📞 <b>Наш менеджер свяжется с вами в ближайшее время!</b>"""
             
             send_message(chat_id, response_text, get_main_menu_keyboard(user_id))
+            
+            # Уведомляем админа о новой записи
+            notify_admin(enrollment_data)
+            
+            # Сохраняем данные
+            save_data()
         else:
             send_message(chat_id, "❌ Ошибка: курс не выбран. Попробуйте записаться заново.", get_main_menu_keyboard(user_id))
         
@@ -401,11 +323,49 @@ def process_message(message):
     
     # Обработка команд
     if text == "/start":
-        response_text = RESPONSES["/start"]
+        response_text = """🚀 <b>Добро пожаловать в школу программирования CodeMastersPRO!</b>
+
+🎯 <b>Наша миссия:</b>
+Обучать IT‑специалистов с нуля, развивать навыки программирования и прививать любовь к технологиям.
+
+📍 <b>Где нас найти:</b>
+🏢 Павлодар, Казахстан
+Бекмаханова 115/2 (угол ул. Естая и проспекта Назарбаева)
+
+💻 <b>Формат обучения:</b>
+✅ Офлайн-занятия в уютных и современно оборудованных аудиториях
+✅ Практика на реальных проектах под руководством наставников
+✅ Пошаговое освоение основ программирования с возможностью углубленного развития
+
+🌐 <b>Наши ресурсы:</b>
+🌟 Сайт: codemasterspro.dev
+📸 Instagram: @code_masterspro
+
+🔥 <b>Почему CodeMastersPRO:</b>
+• Интерактивные уроки и живые проекты
+• Поддержка и постоянное общение с наставниками
+• Возможность участвовать в соревнованиях и хакатонах
+• Прививаем интерес и любовь к IT с первых шагов обучения
+
+Выберите действие:"""
         keyboard = get_main_menu_keyboard(user_id)
         
     elif text == "/help":
-        response_text = RESPONSES["/help"]
+        response_text = """📚 <b>Доступные команды:</b>
+
+/start - Главное меню
+/directions - Направления обучения  
+/enroll - Записаться на курс
+/contacts - Контакты и адрес
+/mission - Наша миссия
+/links - Ссылки на ресурсы
+/admin - Панель администратора
+
+🎯 <b>Как записаться на курс:</b>
+1. Нажмите "📝 Записаться"
+2. Выберите направление
+3. Поделитесь контактом
+4. Ждите звонка менеджера"""
         keyboard = get_main_menu_keyboard(user_id)
         
     elif text == "/admin":
@@ -418,9 +378,8 @@ def process_message(message):
         
     # Обработка админ-авторизации
     elif text.startswith(ADMIN_LOGIN) and ADMIN_PASSWORD in text:
-        global ADMIN_CHAT_ID
-        ADMIN_CHAT_ID = chat_id
         user_sessions[user_id] = {"is_admin": True}
+        save_data()  # Сохраняем авторизацию админа
         
         response_text = f"""✅ <b>Добро пожаловать, {ADMIN_LOGIN}!</b>
 
@@ -440,16 +399,6 @@ def process_message(message):
 • Редактирование контента"""
         keyboard = get_school_management_keyboard()
         
-    # Обработка редактирования текстов
-    elif is_admin(user_id) and user_sessions.get(user_id, {}).get("editing_text"):
-        # Сохраняем новый текст
-        section = user_sessions[user_id]["editing_text"]
-        RESPONSES[f"/{section}"] = text
-        user_sessions[user_id].pop("editing_text", None)
-        
-        response_text = f"✅ <b>Текст раздела '{section}' успешно обновлен!</b>\n\nНовый текст сохранен и будет использоваться в боте."
-        keyboard = get_school_management_keyboard()
-        
     else:
         response_text = "❓ Неизвестная команда. Используйте /start для главного меню."
         keyboard = get_main_menu_keyboard(user_id)
@@ -463,9 +412,35 @@ def process_callback_query(callback_query):
     chat_id = callback_query.get("message", {}).get("chat", {}).get("id")
     message_id = callback_query.get("message", {}).get("message_id")
     
+    print(f"Processing callback: {data} from user {user_id}")
+    
     # Обработка callback'ов
     if data == "main_menu":
-        response_text = RESPONSES["/start"]
+        response_text = """🚀 <b>Добро пожаловать в школу программирования CodeMastersPRO!</b>
+
+🎯 <b>Наша миссия:</b>
+Обучать IT‑специалистов с нуля, развивать навыки программирования и прививать любовь к технологиям.
+
+📍 <b>Где нас найти:</b>
+🏢 Павлодар, Казахстан
+Бекмаханова 115/2 (угол ул. Естая и проспекта Назарбаева)
+
+💻 <b>Формат обучения:</b>
+✅ Офлайн-занятия в уютных и современно оборудованных аудиториях
+✅ Практика на реальных проектах под руководством наставников
+✅ Пошаговое освоение основ программирования с возможностью углубленного развития
+
+🌐 <b>Наши ресурсы:</b>
+🌟 Сайт: codemasterspro.dev
+📸 Instagram: @code_masterspro
+
+🔥 <b>Почему CodeMastersPRO:</b>
+• Интерактивные уроки и живые проекты
+• Поддержка и постоянное общение с наставниками
+• Возможность участвовать в соревнованиях и хакатонах
+• Прививаем интерес и любовь к IT с первых шагов обучения
+
+Выберите действие:"""
         keyboard = get_main_menu_keyboard(user_id)
         
     elif data == "directions":
@@ -513,27 +488,98 @@ def process_callback_query(callback_query):
         user_sessions[user_id] = user_sessions.get(user_id, {})
         user_sessions[user_id]["selected_course"] = course
         
-        response_text = f"""📝 <b>Запись на курс: {course_name}</b>
+        # Проверяем, не записан ли уже студент
+        if user_id in students and students[user_id].get("status") == "approved":
+            response_text = f"""✅ <b>Вы уже записаны на курс!</b>
+
+🎓 <b>Ваш курс:</b> {course_name}
+✅ <b>Статус:</b> Подтвержден
+
+Используйте личный кабинет для управления обучением."""
+            keyboard = get_main_menu_keyboard(user_id)
+        else:
+            response_text = f"""📝 <b>Запись на курс: {course_name}</b>
 
 Для завершения записи поделитесь своим контактом.
 
 📱 <b>Нажмите кнопку ниже:</b>"""
-        keyboard = get_contact_keyboard()
+            keyboard = get_contact_keyboard()
         
     elif data == "contacts":
-        response_text = RESPONSES["/contacts"]
+        response_text = """📍 <b>Контакты CodeMastersPRO:</b>
+🏢 <b>Адрес:</b>
+Павлодар, Казахстан
+Бекмаханова 115/2
+(угол ул. Естая и проспекта Назарбаева)
+📞 <b>Телефон:</b> +7 (777) 332-36-76
+📧 <b>Email:</b> info@codemasterspro.dev
+🕒 <b>Время работы:</b>
+Пн-Пт: 9:00 - 21:00
+Сб: 10:00 - 18:00
+Вс: Выходной
+🌐 <b>Онлайн:</b>
+🔗 <b>Сайт:</b> https://www.codemasterspro.dev/
+📸 <b>Instagram:</b> https://www.instagram.com/code_masterspro"""
         keyboard = get_main_menu_keyboard(user_id)
         
     elif data == "mission":
-        response_text = RESPONSES["/mission"]
+        response_text = """🎯 <b>Наша миссия CodeMastersPRO</b>
+
+Мы обучаем IT‑специалистов с нуля, развиваем навыки программирования и прививаем любовь к технологиям.
+
+🎓 <b>Наши цели:</b>
+• Дать качественное образование в сфере IT
+• Подготовить конкурентоспособных специалистов
+• Развить практические навыки программирования
+• Создать комьюнити единомышленников
+
+💡 <b>Наш подход:</b>
+• Индивидуальный подход к каждому студенту
+• Практико-ориентированное обучение
+• Современные технологии и методики
+• Поддержка на всех этапах обучения
+
+🚀 <b>Результат:</b>
+Выпускники CodeMastersPRO успешно трудоустраиваются в ведущие IT-компании и создают собственные проекты."""
         keyboard = get_main_menu_keyboard(user_id)
         
     elif data == "links":
-        response_text = RESPONSES["/links"]
+        response_text = """🌐 <b>Полезные ссылки CodeMastersPRO</b>
+
+🔗 <b>Основные ресурсы:</b>
+• <b>Сайт:</b> https://www.codemasterspro.dev/
+• <b>Instagram:</b> https://www.instagram.com/code_masterspro
+
+📚 <b>Образовательные материалы:</b>
+• <b>GitHub:</b> https://github.com/codemasterspro
+• <b>YouTube:</b> https://youtube.com/@codemasterspro
+
+💼 <b>Карьера:</b>
+• <b>Вакансии:</b> https://www.codemasterspro.dev/careers
+• <b>Портфолио выпускников:</b> https://www.codemasterspro.dev/portfolio
+
+📞 <b>Связь с нами:</b>
+• <b>Telegram:</b> @CodeMastersPRO_bot
+• <b>Email:</b> info@codemasterspro.dev
+• <b>Телефон:</b> +7 (777) 332-36-76"""
         keyboard = get_main_menu_keyboard(user_id)
         
     elif data == "help":
-        response_text = RESPONSES["/help"]
+        response_text = """📚 <b>Доступные команды:</b>
+
+/start - Главное меню
+/directions - Направления обучения  
+/enroll - Записаться на курс
+/contacts - Контакты и адрес
+/mission - Наша миссия
+/links - Ссылки на ресурсы
+/admin - Панель администратора
+
+🎯 <b>Как записаться на курс:</b>
+1. Нажмите "📝 Записаться"
+2. Выберите направление
+3. Поделитесь контактом
+4. Ждите звонка менеджера"""
         keyboard = get_main_menu_keyboard(user_id)
         
     elif data == "admin_panel":
@@ -583,80 +629,60 @@ def process_callback_query(callback_query):
             response_text = "❌ <b>Доступ запрещен</b>\n\nУ вас нет доступа к личному кабинету."
             keyboard = get_main_menu_keyboard(user_id)
             
-    # Подтверждение записей
-    elif data.startswith("approve_enrollment_"):
-        enrollment_id = int(data.split("_")[2])
-        
-        if is_admin(user_id) and enrollment_id < len(enrollments):
-            enrollment = enrollments[enrollment_id]
-            student_user_id = enrollment.get("user_id")
-            
-            # Подтверждаем студента
-            if student_user_id in students:
-                students[student_user_id]["status"] = "approved"
+    elif data.startswith("approve_"):
+        if is_admin(user_id):
+            student_id = int(data.split("_")[1])
+            if student_id in students:
+                students[student_id]["status"] = "approved"
+                response_text = f"✅ <b>Запись подтверждена!</b>\n\nСтудент {students[student_id]['name']} добавлен в систему."
                 
-                # Уведомляем студента
-                course_names = {
-                    "python": "🐍 Python разработка",
-                    "js": "🌐 JavaScript разработка", 
-                    "go": "🔧 Go разработка",
-                    "data": "📊 Анализ данных"
-                }
-                course_name = course_names.get(enrollment.get("course", ""), "курс")
-                
-                student_message = f"""🎉 <b>Поздравляем! Ваша запись подтверждена!</b>
+                # Уведомляем студента о подтверждении
+                student_message = f"""🎉 <b>Поздравляем!</b>
 
-👤 <b>Имя:</b> {enrollment.get('name', '')}
-🎯 <b>Курс:</b> {course_name}
+Ваша заявка на курс <b>{students[student_id]['course']}</b> подтверждена!
+
+👤 <b>Имя:</b> {students[student_id]['name']}
+🎓 <b>Курс:</b> {students[student_id]['course']}
 ✅ <b>Статус:</b> Подтвержден
 
-📞 <b>Наш менеджер свяжется с вами для уточнения деталей</b>
-
-🚀 <b>Добро пожаловать в CodeMastersPRO!</b>"""
+Теперь у вас есть доступ к личному кабинету!"""
+                send_message(student_id, student_message, get_main_menu_keyboard(student_id))
                 
-                send_message(student_user_id, student_message, get_student_menu_keyboard())
-                
-                response_text = f"✅ <b>Запись подтверждена!</b>\n\nСтудент {enrollment.get('name', '')} получил уведомление о подтверждении и доступ к полному функционалу."
+                # Сохраняем изменения
+                save_data()
             else:
-                response_text = "❌ <b>Ошибка:</b> Студент не найден."
+                response_text = "❌ Студент не найден."
+            keyboard = get_school_management_keyboard()
         else:
-            response_text = "❌ <b>Ошибка:</b> Запись не найдена или нет прав доступа."
-        
-        keyboard = get_school_management_keyboard()
-        
-    elif data.startswith("reject_enrollment_"):
-        enrollment_id = int(data.split("_")[2])
-        
-        if is_admin(user_id) and enrollment_id < len(enrollments):
-            enrollment = enrollments[enrollment_id]
-            student_user_id = enrollment.get("user_id")
+            response_text = "❌ <b>Доступ запрещен</b>"
+            keyboard = get_main_menu_keyboard(user_id)
             
-            # Отклоняем студента
-            if student_user_id in students:
-                students[student_user_id]["status"] = "rejected"
+    elif data.startswith("reject_"):
+        if is_admin(user_id):
+            student_id = int(data.split("_")[1])
+            if student_id in students:
+                students[student_id]["status"] = "rejected"
+                response_text = f"❌ <b>Запись отклонена!</b>\n\nЗаявка студента {students[student_id]['name']} отклонена."
                 
-                # Уведомляем студента
-                student_message = f"""❌ <b>Ваша заявка отклонена</b>
+                # Уведомляем студента об отклонении
+                student_message = f"""❌ <b>Заявка отклонена</b>
 
-👤 <b>Имя:</b> {enrollment.get('name', '')}
-🎯 <b>Курс:</b> {enrollment.get('course', '')}
+К сожалению, ваша заявка на курс <b>{students[student_id]['course']}</b> была отклонена.
 
-📞 <b>Для уточнения деталей свяжитесь с нами:</b>
+Если у вас есть вопросы, свяжитесь с нами:
 📞 +7 (777) 332-36-76
-📧 info@codemasterspro.dev
-
-🔄 <b>Вы можете подать новую заявку</b>"""
+📧 info@codemasterspro.dev"""
+                send_message(student_id, student_message, get_main_menu_keyboard(student_id))
                 
-                send_message(student_user_id, student_message, get_main_menu_keyboard(student_user_id))
-                
-                response_text = f"❌ <b>Запись отклонена!</b>\n\nСтудент {enrollment.get('name', '')} получил уведомление об отклонении."
+                # Сохраняем изменения
+                save_data()
             else:
-                response_text = "❌ <b>Ошибка:</b> Студент не найден."
+                response_text = "❌ Студент не найден."
+            keyboard = get_school_management_keyboard()
         else:
-            response_text = "❌ <b>Ошибка:</b> Запись не найдена или нет прав доступа."
-        
-        keyboard = get_school_management_keyboard()
-        
+            response_text = "❌ <b>Доступ запрещен</b>"
+            keyboard = get_main_menu_keyboard(user_id)
+            
     else:
         response_text = "❓ Неизвестная команда."
         keyboard = get_main_menu_keyboard(user_id)
@@ -666,6 +692,8 @@ def process_callback_query(callback_query):
 
 def process_webhook(update):
     """Обработать webhook от Telegram."""
+    print(f"Processing webhook: {json.dumps(update, indent=2)}")
+    
     if "message" in update:
         process_message(update["message"])
     elif "callback_query" in update:
