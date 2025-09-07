@@ -1,11 +1,9 @@
 """
-SQLAlchemy ORM models for the CodeMastersPRO bot.
-Defines all database tables and relationships.
+Упрощенные модели SQLAlchemy для совместимости с Vercel.
 """
 
 from datetime import datetime
 from enum import Enum as PyEnum
-from typing import List, Optional
 
 from sqlalchemy import (
     Boolean,
@@ -67,12 +65,12 @@ class Student(Base):
         nullable=False
     )
     created_at = Column(
-        DateTime(timezone=True), 
+        DateTime, 
         server_default=func.now(),
         nullable=False
     )
     updated_at = Column(
-        DateTime(timezone=True), 
+        DateTime, 
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False
@@ -96,27 +94,27 @@ class Direction(Base):
     
     __tablename__ = "directions"
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    code: Mapped[DirectionCode] = mapped_column(
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(
         Enum(DirectionCode), 
         unique=True, 
         nullable=False
     )
-    title: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), 
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(
+        DateTime, 
         server_default=func.now(),
         nullable=False
     )
     
     # Relationships
-    enrollments: Mapped[List["Enrollment"]] = relationship(
+    enrollments = relationship(
         "Enrollment", 
         back_populates="direction"
     )
-    groups: Mapped[List["Group"]] = relationship(
+    groups = relationship(
         "Group", 
         back_populates="direction",
         cascade="all, delete-orphan"
@@ -128,22 +126,22 @@ class Group(Base):
     
     __tablename__ = "groups"
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    title: Mapped[str] = mapped_column(String(255), nullable=False)
-    direction_id: Mapped[int] = mapped_column(
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False)
+    direction_id = Column(
         ForeignKey("directions.id"), 
         nullable=False
     )
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), 
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(
+        DateTime, 
         server_default=func.now(),
         nullable=False
     )
     
     # Relationships
-    direction: Mapped["Direction"] = relationship("Direction", back_populates="groups")
-    lessons: Mapped[List["Lesson"]] = relationship(
+    direction = relationship("Direction", back_populates="groups")
+    lessons = relationship(
         "Lesson", 
         back_populates="group",
         cascade="all, delete-orphan"
@@ -155,19 +153,19 @@ class Lesson(Base):
     
     __tablename__ = "lessons"
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    group_id: Mapped[int] = mapped_column(ForeignKey("groups.id"), nullable=False)
-    topic: Mapped[str] = mapped_column(String(255), nullable=False)
-    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), 
+    id = Column(Integer, primary_key=True, index=True)
+    group_id = Column(ForeignKey("groups.id"), nullable=False)
+    topic = Column(String(255), nullable=False)
+    starts_at = Column(DateTime, nullable=False)
+    ends_at = Column(DateTime, nullable=False)
+    created_at = Column(
+        DateTime, 
         server_default=func.now(),
         nullable=False
     )
     
     # Relationships
-    group: Mapped["Group"] = relationship("Group", back_populates="lessons")
+    group = relationship("Group", back_populates="lessons")
 
 
 class Enrollment(Base):
@@ -175,35 +173,35 @@ class Enrollment(Base):
     
     __tablename__ = "enrollments"
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    student_id: Mapped[int] = mapped_column(
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(
         ForeignKey("students.id"), 
         nullable=False
     )
-    direction_id: Mapped[int] = mapped_column(
+    direction_id = Column(
         ForeignKey("directions.id"), 
         nullable=False
     )
-    status: Mapped[EnrollmentStatus] = mapped_column(
+    status = Column(
         Enum(EnrollmentStatus), 
         default=EnrollmentStatus.PENDING,
         nullable=False
     )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), 
+    created_at = Column(
+        DateTime, 
         server_default=func.now(),
         nullable=False
     )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), 
+    updated_at = Column(
+        DateTime, 
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False
     )
     
     # Relationships
-    student: Mapped["Student"] = relationship("Student", back_populates="enrollments")
-    direction: Mapped["Direction"] = relationship("Direction", back_populates="enrollments")
+    student = relationship("Student", back_populates="enrollments")
+    direction = relationship("Direction", back_populates="enrollments")
 
 
 class PaymentReminder(Base):
@@ -211,28 +209,28 @@ class PaymentReminder(Base):
     
     __tablename__ = "payment_reminders"
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    student_id: Mapped[int] = mapped_column(
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(
         ForeignKey("students.id"), 
         nullable=False
     )
-    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    status: Mapped[PaymentReminderStatus] = mapped_column(
+    due_at = Column(DateTime, nullable=False)
+    status = Column(
         Enum(PaymentReminderStatus), 
         default=PaymentReminderStatus.PENDING,
         nullable=False
     )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), 
+    created_at = Column(
+        DateTime, 
         server_default=func.now(),
         nullable=False
     )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), 
+    updated_at = Column(
+        DateTime, 
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False
     )
     
     # Relationships
-    student: Mapped["Student"] = relationship("Student", back_populates="payment_reminders")
+    student = relationship("Student", back_populates="payment_reminders")

@@ -7,7 +7,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.logging import get_logger
-from app.models import DirectionCode, EnrollmentStatus, LanguageCode, Student
+from app.models_simple import DirectionCode, EnrollmentStatus, LanguageCode, Student
 from app.utils.i18n import get_translation
 from app.bot.services.repo_sync import (
     DirectionRepository,

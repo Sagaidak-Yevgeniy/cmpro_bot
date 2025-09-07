@@ -6,7 +6,7 @@ from telegram import Update
 from telegram.ext import ContextTypes, ConversationHandler
 
 from app.logging import get_logger
-from app.models import LanguageCode
+from app.models_simple import LanguageCode
 from app.utils.i18n import get_translation
 from app.utils.telegram import get_user_id, safe_reply_text
 from app.bot.keyboards import get_main_menu_keyboard

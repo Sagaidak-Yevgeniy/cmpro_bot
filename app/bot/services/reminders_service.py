@@ -8,7 +8,7 @@ from typing import List
 from sqlalchemy.orm import Session
 
 from app.logging import get_logger
-from app.models import PaymentReminderStatus
+from app.models_simple import PaymentReminderStatus
 from app.utils.i18n import get_translation
 from app.bot.services.repo_sync import PaymentReminderRepository
 

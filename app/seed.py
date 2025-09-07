@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.logging import configure_logging, get_logger
-from app.models import (
+from app.models_simple import (
     Direction,
     DirectionCode,
     Group,

@@ -5,7 +5,7 @@
 from app.config import settings
 from app.logging import configure_logging, get_logger
 from app.db import engine
-from app.models import Base
+from app.models_simple import Base
 
 # Настройка логирования
 configure_logging(settings.environment)

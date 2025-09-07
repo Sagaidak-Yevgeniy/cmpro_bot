@@ -7,7 +7,7 @@ from typing import List
 from sqlalchemy.orm import Session
 
 from app.logging import get_logger
-from app.models import LanguageCode
+from app.models_simple import LanguageCode
 from app.utils.i18n import get_translation
 from app.utils.time import format_date, format_time
 from app.bot.services.repo_sync import LessonRepository

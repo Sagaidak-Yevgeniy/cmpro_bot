@@ -10,7 +10,7 @@ from sqlalchemy import and_, desc, func
 from sqlalchemy.orm import Session, selectinload
 
 from app.logging import get_logger
-from app.models import (
+from app.models_simple import (
     Direction,
     DirectionCode,
     Enrollment,
